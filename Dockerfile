@@ -1,46 +1,41 @@
-FROM alpine:latest
+FROM ruby:2.7.0-alpine3.11
 
-RUN apk update 
+RUN apk --update add build-base nodejs tzdata postgresql-dev postgresql-client libxslt-dev libxml2-dev imagemagick
+RUN apk add bash build-base curl file coreutils git gzip libc6-compat ncurses ruby ruby-dbm ruby-etc ruby-irb ruby-json sudo
 
-RUN apk upgrade 
-
-ENV BUILD_PACKAGES curl-dev ruby-dev build-base
-
-RUN apk add curl wget bash $BUILD_PACKAGES
-
-RUN apk add file git gzip libc6-compat ncurses ruby ruby-io-console ruby-bundler ruby-dbm ruby-etc ruby-irb ruby-json sudo
-
-RUN apk add --update nodejs npm
-
-RUN npm install -g yarn
-
-# Create homebrew user
 RUN adduser -D -s /bin/bash linuxbrew
-
 RUN echo 'linuxbrew ALL=(ALL) NOPASSWD:ALL' >>/etc/sudoers
+#RUN su -l linuxbrew
 
-RUN su -l linuxbrew
+RUN su -l linuxbrew -c "sh $(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"
 
-# Install Hombrew
-RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"
+#RUN sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)"
+#RUN PATH=$HOME/.linuxbrew/bin:$HOME/.linuxbrew/sbin:$PATH
 
-RUN PATH=$HOME/.linuxbrew/bin:$HOME/.linuxbrew/sbin:$PATH
+#RUN brew update
+#RUN brew doctor
 
-# Update Brew
-RUN brew update
-RUN brew doctor
+ENV INSTALL_PATH /ontrack
+RUN mkdir -p $INSTALL_PATH
 
-# Clean APK cache
-RUN rm -rf /var/cache/apk/*
+WORKDIR $INSTALL_PATH
 
-RUN mkdir /usr/app 
+COPY Gemfile Gemfile.lock ./
 
-WORKDIR /usr/app
+ARG RAILS_ENV
 
-COPY . /user/app/
+ENV RACK_ENV=$RAILS_ENV
+
+RUN bundle update
+
+RUN gem install bundler
+
+RUN bundle install;
+
+COPY * /ontrack/
 
 # Run the install script
-RUN sh scripts.sh install_with_brew
+#RUN sh scripts.sh install_with_brew
 
 # Start the app
-CMD ["sh", "scripts.sh", "start"]
+##CMD ["sh", "scripts.sh", "start"]
